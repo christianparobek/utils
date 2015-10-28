@@ -11,8 +11,8 @@ intervaldir=$3
 #outname=$4
 time=`date +"%F_%T"`
 
-## make folder for tmp files
-mkdir "tmp_$time"
+## make folder for the files
+mkdir "multivcfs_$time"
 
 ## run a for loop for each individual in the vcf
 for name in `grep "CHROM" $vcf | cut -d$'\t' -f10-`
@@ -24,10 +24,10 @@ java -Xmx2g -jar $gatk \
 	--variant $vcf \
 	-R $ref \
 	-sn $name \
-	-o tmp_$time/$name.vcf
+	-o multivcfs_$time/$name.vcf
 
 ## REMOVE ALL NON-ENTRIES IN INDIVIDUAL FILES (PL=0 & GT=0)
-grep -vP "PL\t0" tmp_$time/$name.vcf | grep -vP "\tGT\t." > tmp_$time/$name.sans0.vcf
+grep -vP "PL\t0" multivcfs_$time/$name.vcf | grep -vP "\tGT\t." > multivcfs_$time/$name.sans0.vcf
 
 for interval in `ls $intervaldir`
 do
@@ -35,18 +35,18 @@ do
 	java -Xmx2g -jar $gatk \
 		-T FastaAlternateReferenceMaker \
 		-R $ref \
-		--variant tmp_$time/$name.sans0.vcf \
+		--variant multivcfs_$time/$name.sans0.vcf \
 		-L $intervaldir$interval \
-		-o tmp_$time/$name$interval.fa
+		-o multivcfs_$time/$name$interval.fa
 	#		 --rawOnelineSeq prints only sequence
 
-	echo ">"$name >> tmp_$time/$interval.fa
-	grep -v ">" tmp_$time/$name$interval.fa >> tmp_$time/$interval.fa
-	rm tmp_$time/$name$interval.fa
+	echo ">"$name >> multivcfs_$time/$interval.fa
+	grep -v ">" multivcfs_$time/$name$interval.fa >> multivcfs_$time/$interval.fa
+	rm multivcfs_$time/$name$interval.fa
 
 done
 
-rm tmp_$time/*vcf*
+rm multivcfs_$time/*vcf*
 
 done
 

@@ -1,5 +1,5 @@
 ## Script to turn a multivcf into a multifasta
-## USAGE: bash multivcf2fasta.sh <vcf> <ref> <dir with gatk-style interval file(s)> # <outname>
+## USAGE: bash multivcf2fasta.sh <vcf> <ref> <gatk-style interval string (single locus)> # <outname>
 ## Started 14 October 2015
 ## Christian Parobek
 
@@ -7,7 +7,7 @@
 gatk=/nas02/apps/biojars-1.0/GenomeAnalysisTK-3.3-0/GenomeAnalysisTK.jar
 vcf=$1
 ref=$2
-intervaldir=$3
+interval=$3
 #outname=$4
 time=`date +"%F_%T"`
 
@@ -24,27 +24,34 @@ java -Xmx2g -jar $gatk \
 	--variant $vcf \
 	-R $ref \
 	-sn $name \
-	-o multivcfs_$time/$name.vcf
+	-o multivcfs_$time/$name.tmp.vcf
 
-## REMOVE ALL NON-ENTRIES IN INDIVIDUAL FILES (PL=0 & GT=0)
-grep -vP "PL\t0" multivcfs_$time/$name.vcf | grep -vP "\tGT\t." > multivcfs_$time/$name.sans0.vcf
 
-for interval in `ls $intervaldir`
-do
-	## VCF TO FASTA
-	java -Xmx2g -jar $gatk \
-		-T FastaAlternateReferenceMaker \
-		-R $ref \
-		--variant multivcfs_$time/$name.sans0.vcf \
-		-L $intervaldir$interval \
-		-o multivcfs_$time/$name$interval.fa
-	#		 --rawOnelineSeq prints only sequence
+### REMOVE ALL NON-ENTRIES IN INDIVIDUAL FILES (PL=0 & GT=0)
+grep -vP "PL\t0" multivcfs_$time/$name.tmp.vcf | grep -vP "\tGT\t." > multivcfs_$time/$name.vcf
+
+rm multivcfs_$time/$name.tmp.vcf* # remove the files with the extra entries
+
+
+##for interval in `ls $interval`
+##do
+	
+## VCF TO FASTA
+java -Xmx2g -jar $gatk \
+	-T FastaAlternateReferenceMaker \
+	-R $ref \
+	--variant multivcfs_$time/$name.vcf \
+	-o multivcfs_$time/$name.fa
+	#-L $interval \
+	#-o multivcfs_$time/$name$interval.fa
+		#--rawOnelineSeq prints only sequence
 
 	echo ">"$name >> multivcfs_$time/$interval.fa
-	grep -v ">" multivcfs_$time/$name$interval.fa >> multivcfs_$time/$interval.fa
-	rm multivcfs_$time/$name$interval.fa
+	#grep -v ">" multivcfs_$time/$name$interval.fa >> multivcfs_$time/$interval.fa
+	grep -v ">" multivcfs_$time/$name.fa >> multivcfs_$time/$interval.fa
+	rm multivcfs_$time/$name.fa
 
-done
+##done
 
 rm multivcfs_$time/*vcf*
 
